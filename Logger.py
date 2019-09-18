@@ -1,10 +1,11 @@
 import csv
 from direct.task.Task import Task
 import SerialStub as serial
+# import serial 
 import QuaternionHelper
 class Logger():
     def __init__(self, readFromSerial, port):
-        self.readFromSerial = readFromSerial       
+        self.readFromSerial = readFromSerial
         self.logs = []
         self.logIndex = 1
         self.currentLogRow = []
@@ -13,31 +14,34 @@ class Logger():
         self.runTime = 0
         self.serialComing = False
         if not readFromSerial:
+            print("Loading logs")
             self.buildLogs()
         else :
-            self.serial = serial.Serial(port)
+            print("Loading serial")
+            self.serial = serial.Serial(port, 19200, timeout=0.05 )
             self.logs.append(self.parseSerialLine())            
             self.logs.append(self.parseSerialLine())
 
     def buildLogs(self):
-        with open('./Data/LeftAccelTest.csv') as csvfile:
+        # with open('./Data/LeftAccelTest.csv') as csvfile: #TODO remove this
+        with open('./Data/LeftAccelTest - Copy.csv') as csvfile:
           readCSV = csv.reader(csvfile, delimiter=',')
           for row in readCSV:
             self.logs.append(row)
-    
-        
+
     def incrementIterator(self):        
         if self.logIndex < len(self.logs) - 1:
             self.logIndex = self.logIndex + 1
         return self.logIndex
 
-    def readNewRow(self, task):           
+    def readNewRow(self, task):
         if self.readFromSerial and self.serialComing:
             self.logs.append(self.parseSerialLine())  
         self.currentLogRow = self.logs[self.logIndex]
         self.lastLogRow = self.logs[self.logIndex - 1]
-        self.timeDelta = (float(self.currentLogRow[0]) - float(self.lastLogRow[0]))/1000
-        self.runTime = str(float(self.currentLogRow[0])/1000)
+        #self.timeDelta = (float(self.currentLogRow[0]) - float(self.lastLogRow[0]))/1000
+        self.timeDelta = (float(self.currentLogRow[1]) - float(self.lastLogRow[1]))/1000 #TODO remove this
+        self.runTime = str(float(self.currentLogRow[1])/1000)
         return Task.cont
     
     def setIndex(self, index):        
@@ -48,22 +52,36 @@ class Logger():
             self.logIndex = index
 
     def getLastQuaternion(self):        
-        lastLogStringQuat = self.lastLogRow[2:]
+        #lastLogStringQuat = self.lastLogRow[2:] #TODO remove this
+        lastLogStringQuat = self.lastLogRow[4:]
         return QuaternionHelper.CreateQuaternion(lastLogStringQuat)
 
     def getCurrentQuaternion(self):
-        currentLogStringQuat = self.currentLogRow[2:]
+        #currentLogStringQuat = self.currentLogRow[2:] #TODO remove this
+        currentLogStringQuat = self.currentLogRow[4:]
         currquat = QuaternionHelper.CreateQuaternion(currentLogStringQuat)
         angle = currquat.getAngle()
         return currquat
 
     def parseSerialLine(self):
-        splitString = self.serial.readline().split()
-        if len(splitString) > 0:
-            self.serialComing = True
-            return splitString[0].split(",")
-        else:
-            self.serialComing = False
+        while True:
+            try:                
+                splitString = self.serial.readline().decode('utf-8')
+                splitString = splitString.replace('\t',',').rstrip()
+                if len(splitString) > 0 and 'DATA' in splitString:
+                    splitString = splitString.split(",")
+                    self.serialComing = True
+
+                    if splitString[2] == "DATA" and splitString[3] == "R":
+                        formattedString = splitString[3:]
+                        formattedString.insert(0, splitString[1]) 
+                        print(formattedString)
+                        return formattedString
+                else:
+                    self.serialComing = False
+            except:
+                continue
+            
 
 
     def getLogLength(self):

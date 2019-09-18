@@ -1,6 +1,7 @@
 import DisplayHelper
 from direct.gui.OnscreenText import OnscreenText
-from panda3d.core import LQuaternionf, TextNode, LVector4f, PandaNode, LightNode, LVecBase4, Shader, NodePath, Filename, WindowProperties, CompassEffect, LineSegs
+#from panda3d.core import LQuaternionf, TextNode, LVector4f, PandaNode, LightNode, LVecBase4, Shader, NodePath, Filename, WindowProperties, CompassEffect, LineSegs
+from panda3d.core import TextNode, LineSegs
 from pyquaternion import Quaternion
 
 class HeadsUpDisplay():
@@ -10,7 +11,7 @@ class HeadsUpDisplay():
         self.timeDelta = 0
         self.instVel = 0.0
         self.velocityLogs = []
-        self.currentLogQuat = []
+        self.currentLogQuat = ["!"] #TODO remove this 
         self.lastLogQuat = []
         self.velLines = LineSegs("lines")
         self.velLines.setColor(0, 1, 1, 0)                
@@ -23,6 +24,8 @@ class HeadsUpDisplay():
         self.timeText = OnscreenText(text = 'Time:' + self.time, pos = (-1.25, 0.90), scale = 0.07, align=TextNode.ALeft)
         self.fpsText = OnscreenText(text = 'FPS:' + self.fps, pos = (-1.25, 0.80), scale = 0.07, align=TextNode.ALeft)
         self.velocityText = OnscreenText(text = 'Velocity: ' + str(self.instVel), pos = (.75, 0.80), scale = 0.07, align=TextNode.ALeft)
+        # TODO remove this
+        self.quatText = OnscreenText(text = 'Q:'.join(self.currentLogQuat), pos = (-1.25, 0.70), scale = 0.07, align=TextNode.ALeft)
 
     def simulatorInteractives(self, app):
         self.playButton = DisplayHelper.buildButton((1.2, 0, -.9), 0.05, "Pause", app.pauseSim) 
@@ -42,8 +45,6 @@ class HeadsUpDisplay():
         
         angularDisplacement = currentAxis * currentRadians
         lastAngularDisplacement = lastAxis *  lastRadians
-        if self.getMagnitude((lastAngularDisplacement - angularDisplacement) / timeDelta) > 0.01:
-            print("lol")
         return (lastAngularDisplacement - angularDisplacement) / timeDelta
 
     def getMagnitude(self, vec):
@@ -55,6 +56,13 @@ class HeadsUpDisplay():
         self.timeText.setText("Time: " + runTime)
         self.fpsText.setText("FPS: " + framesPerSecond)      
         self.velocityText.setText("Velocity: " + str(self.getMagnitude(instVel)))
+        
+        #self.quatText.setText('Q:'.join(self.currentLogQuat)) #TODO remove this
+        quatstring = "Q: "
+        for i in range( 0 ,4):
+            quatstring= quatstring + "{:.1f}".format(currentLogQuat[i]) + ", "
+        self.quatText.setText(quatstring) #TODO remove this
+
         self.velocityLogs.append(self.instVel)  
         
     def getStartIndex(self, logs):

@@ -20,7 +20,7 @@ class Serial:
         self._receivedData = ""
         self.logs = []
 
-        self._data = open('./Data/LeftAccelTest.txt')
+        self._data = open('./Data/LeftAccelTest_calib.csv')
 
     ## isOpen()
     # returns True if the port to the Arduino is open.  False otherwise

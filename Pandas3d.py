@@ -19,6 +19,7 @@ class MyApp(ShowBase):
         self.parentNode = DisplayHelper.setupCamera(self)
         ShaderUtils.renderShaders(self)
         self.accept('escape', lambda: sys.exit())
+        # self.logger = Logger(True, 'COM5')
         self.logger = Logger(False, 0)
         self.hud = HeadsUpDisplay(self)
         self.playing = True
