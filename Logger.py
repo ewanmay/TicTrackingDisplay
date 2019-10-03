@@ -2,8 +2,9 @@ import csv
 from direct.task.Task import Task
 import SerialStub as serial
 import QuaternionHelper
+from StateEnum import State
 class Logger():
-    def __init__(self, readFromSerial, port):
+    def __init__(self, readFromSerial, port, logFile):
         self.readFromSerial = readFromSerial       
         self.logs = []
         self.logIndex = 1
@@ -11,6 +12,7 @@ class Logger():
         self.lastLogRow = []
         self.timeDelta = 0
         self.runTime = 0
+        self.logFile = logFile
         self.serialComing = False
         if not readFromSerial:
             self.buildLogs()
@@ -20,7 +22,7 @@ class Logger():
             self.logs.append(self.parseSerialLine())
 
     def buildLogs(self):
-        with open('./Data/LeftAccelTest.csv') as csvfile:
+        with open(self.logFile) as csvfile:
           readCSV = csv.reader(csvfile, delimiter=',')
           for row in readCSV:
             self.logs.append(row)
@@ -31,14 +33,15 @@ class Logger():
             self.logIndex = self.logIndex + 1
         return self.logIndex
 
-    def readNewRow(self, task):           
+    def readNewRow(self, state):
+        if(state != State.Playing):
+            return
         if self.readFromSerial and self.serialComing:
             self.logs.append(self.parseSerialLine())  
         self.currentLogRow = self.logs[self.logIndex]
         self.lastLogRow = self.logs[self.logIndex - 1]
         self.timeDelta = (float(self.currentLogRow[0]) - float(self.lastLogRow[0]))/1000
         self.runTime = str(float(self.currentLogRow[0])/1000)
-        return Task.cont
     
     def setIndex(self, index):        
         if(index == 0):

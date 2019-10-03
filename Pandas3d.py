@@ -10,19 +10,20 @@ from direct.task.Task import Task
 from Hud import HeadsUpDisplay
 from Logger import Logger
 from panda3d.core import LQuaternionf
-
+from StateEnum import State
 
 class MyApp(ShowBase):
     def __init__(self):
         ShowBase.__init__(self)
+        self.state = State.Start
         self.model = DisplayHelper.drawModel(self)
         self.parentNode = DisplayHelper.setupCamera(self)
         ShaderUtils.renderShaders(self)
         self.accept('escape', lambda: sys.exit())
-        self.logger = Logger(False, 0)
         self.hud = HeadsUpDisplay(self)
         self.playing = True
-        self.taskMgr.add(self.logger.readNewRow, "ReadNewRowTask")
+        self.hud.drawStartScreen()
+        self.taskMgr.add(self.readNewRow, "ReadNewRowTask")
         self.taskMgr.add(self.rotateObject, "RotateObjectTask")
         self.taskMgr.add(self.displayHud, "DisplayHudTask")
         self.taskMgr.add(self.thirdPersonCameraTask, 'ThirdPersonCameraTask')
@@ -30,6 +31,8 @@ class MyApp(ShowBase):
         # self.taskMgr.add(self.drawGraph, "DrawVelocityGraph")
 
     def rotateObject(self, task):
+        if(self.state != State.Playing):
+            return
         unitQuaternion = LQuaternionf(1., 0., 0., 0.)
         currentQuaternion = self.logger.getCurrentQuaternion()
         diffQuat = (unitQuaternion - currentQuaternion)
@@ -38,6 +41,8 @@ class MyApp(ShowBase):
         return Task.cont
     
     def displayHud(self, task):
+        if(self.state != State.Playing):
+            return
         runTime = self.logger.runTime
         timeDelta = self.logger.timeDelta   
         currentQuaternion = self.logger.getCurrentQuaternion()
@@ -46,6 +51,8 @@ class MyApp(ShowBase):
         return Task.cont
 
     def incrementIterator(self, task):
+        if(self.state != State.Playing):
+            return
         if self.playing:
             logIndex = self.logger.incrementIterator()
             self.hud.slider['value'] = logIndex        
@@ -63,6 +70,8 @@ class MyApp(ShowBase):
         self.pitch = 0
     
     def thirdPersonCameraTask(self, task):
+        if(self.state != State.Playing):
+            return
         if self.isClicked:
             md = self.win.getPointer(0)
                 
@@ -86,7 +95,8 @@ class MyApp(ShowBase):
 
     def updateValue(self):
         logIndex = int(round(self.hud.slider['value']))
-        self.logger.setIndex(logIndex)
+        if hasattr(self, 'logger'):
+            self.logger.setIndex(logIndex)
 
     def restartSim(self):
         self.logger.setIndex(1)
@@ -98,9 +108,32 @@ class MyApp(ShowBase):
         else:
             self.playing = True            
             self.hud.playButton.setText("Pause")
+    
+    def startScreen(self, task):
+        if(self.state != State.Start):
+            return
+        self.hud.drawStartScreen()
+        return task.cont
+    
+    def readNewRow(self, task):
+        if(self.state != State.Start):
+            self.logger.readNewRow(self.state)        
+        return Task.cont
+        
+    def startSerial(self):
+        self.logger = Logger(True, self.hud.selectedComPort, "")
+        self.state = State.Playing
 
-app = MyApp()
+    def startLogs(self):
+        self.logger = Logger(False, 0, self.hud.fileInput)
+        self.state = State.Playing
+            
+
+    def quit(self):
+        sys.exit()
+
 try:
+    app = MyApp()
     app.run()
 except SystemExit as e:
     print("Goodbye!")

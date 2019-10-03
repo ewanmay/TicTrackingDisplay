@@ -1,12 +1,21 @@
+from pyquaternion import Quaternion
+
 import DisplayHelper
 from direct.gui.OnscreenText import OnscreenText
-from panda3d.core import LQuaternionf, TextNode, LVector4f, PandaNode, LightNode, LVecBase4, Shader, NodePath, Filename, WindowProperties, CompassEffect, LineSegs
-from pyquaternion import Quaternion
+from Utils import getAllSerialPorts
+from panda3d.core import (CompassEffect, Filename, LightNode, LineSegs,
+                          LQuaternionf, LVecBase4, LVector4f, NodePath,
+                          PandaNode, Shader, TextNode, WindowProperties)
+from StateEnum import State
+from tkinter import Tk
+from tkinter.filedialog import askopenfilename
 
 class HeadsUpDisplay():
     def __init__(self, app):
         self.time = "0"
         self.fps = "0"
+        self.fileInput = ""
+        self.selectedComPort = ""
         self.timeDelta = 0
         self.instVel = 0.0
         self.velocityLogs = []
@@ -23,19 +32,28 @@ class HeadsUpDisplay():
         self.timeText = OnscreenText(text = 'Time:' + self.time, pos = (-1.25, 0.90), scale = 0.07, align=TextNode.ALeft)
         self.fpsText = OnscreenText(text = 'FPS:' + self.fps, pos = (-1.25, 0.80), scale = 0.07, align=TextNode.ALeft)
         self.velocityText = OnscreenText(text = 'Velocity: ' + str(self.instVel), pos = (.75, 0.80), scale = 0.07, align=TextNode.ALeft)
+        self.selectedFile = OnscreenText(text = 'Selected File: ' + self.fileInput, pos = (-.6, 0.2), scale = 0.07, align=TextNode.ALeft)
 
     def simulatorInteractives(self, app):
         self.playButton = DisplayHelper.buildButton((1.2, 0, -.9), 0.05, "Pause", app.pauseSim) 
         self.restartButton = DisplayHelper.buildButton((1.00, 0, -.9), 0.05, "Restart", app.restartSim)
         self.resetButton = DisplayHelper.buildButton((.80, 0, -.9), 0.05, "Reset", app.resetCamera)
-        self.slider = DisplayHelper.buildSlider((0,len(app.logger.logs)-1), 0, (-.60, 0, -.9), 0.7, 3, app.updateValue)
+        self.slider = DisplayHelper.buildSlider((0,1), 0, (-.60, 0, -.9), 0.7, 3, app.updateValue)        
+        self.startSerialButton = DisplayHelper.buildButton((-.1, 0, -.1), 0.1, "Read from Serial", self.displaySerialOptions) 
+        self.startLogsButton = DisplayHelper.buildButton((-.1, 0, .1), 0.1, "Read from Logs", self.displayFileOptions)        
+        self.quitButton = DisplayHelper.buildButton((-.05, 0, -.3), .1, "Quit", app.quit)
+        self.launchFromFileButton = DisplayHelper.buildButton((.2, 0, 0), 0.1, "Start", app.startLogs)
+        self.launchFromSerialButton = DisplayHelper.buildButton((.2, 0, 0), 0.1, "Start", app.startSerial)               
+        self.openFilesButton = DisplayHelper.buildButton((-.35, 0, 0), 0.05, "Select File", self.openFiles)
+        comsOptions = getAllSerialPorts()
+        self.menu = DisplayHelper.buildOptionMenu("Select a coms port", 0.1, self.handleItemSelect, comsOptions, 2, (0.65,0.65,0.65,1), (-.15, 0, 0))
+        self.backButton = DisplayHelper.buildButton((-.8, 0, .8), 0.06, "Back To Menu", self.drawStartScreen)
+
 
     def getVelocity(self, currentLogQuat, lastLogQuat, timeDelta):
         currentQuat = Quaternion(currentLogQuat[0], currentLogQuat[1],currentLogQuat[2], currentLogQuat[3])
         currentAxis = currentQuat.axis
-        currentRadians = currentQuat.radians
-
-        
+        currentRadians = currentQuat.radians        
         lastQuat = Quaternion(lastLogQuat[0], lastLogQuat[1],lastLogQuat[2], lastLogQuat[3])
         lastAxis = lastQuat.axis
         lastRadians = lastQuat.radians
@@ -61,6 +79,52 @@ class HeadsUpDisplay():
         if len(logs) > 10:
             return len(logs) - 11
         return 0
+
+    def drawStartScreen(self):
+        self.timeText.hide()
+        self.fpsText.hide()
+        self.velocityText.hide()
+        self.playButton.hide()
+        self.restartButton.hide()
+        self.resetButton.hide()
+        self.slider.hide()
+        self.launchFromFileButton.hide()
+        self.launchFromSerialButton.hide()
+        self.selectedFile.hide()
+        self.menu.hide()
+        self.backButton.hide()
+        self.openFilesButton.hide()
+        self.startSerialButton.show()
+        self.startLogsButton.show()
+        self.quitButton.show()
+
+    def displayFileOptions(self):
+        self.launchFromFileButton.show()
+        self.selectedFile.show()
+        self.backButton.show()
+        self.openFilesButton.show()
+        self.startSerialButton.hide()
+        self.startLogsButton.hide()
+        self.quitButton.hide()
+    
+    def displaySerialOptions(self):
+        self.startSerialButton.hide()
+        self.startLogsButton.hide()
+        self.quitButton.hide()
+        self.backButton.show()
+        self.launchFromSerialButton.show()
+        self.menu.show()
+
+    def openFiles(self):
+        self.fileInput = askopenfilename()
+        self.selectedFile.setText('Selected File: ' + self.fileInput)
+    # def destroyStartSceen(self):
+    #     self.entry = None
+    #     self.menu = None
+
+    def handleItemSelect(self, value):
+        self.selectedComPort = value
+        print(value)
 
     # def drawGraph(self, task):
     #     lastX = -.9

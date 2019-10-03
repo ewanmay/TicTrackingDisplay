@@ -1,5 +1,7 @@
 import csv
+import serial
 # a Serial class emulator 
+SerialException = serial.SerialException
 class Serial:
 
     ## init(): the constructor.  Many of the arguments have default values
