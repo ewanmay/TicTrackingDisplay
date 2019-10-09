@@ -1,27 +1,38 @@
 import csv
 from direct.task.Task import Task
-import SerialStub as serial
-# import serial 
+# import SerialStub as serial
+import sqlite3
+import re
+import serial
 import QuaternionHelper
-from StateEnum import State
+from Database import Database
+from Enumerations import State, LogMethod
+from datetime import datetime
 class Logger():
-    def __init__(self, readFromSerial, port, logFile):
-        self.readFromSerial = readFromSerial       
+    def __init__(self, logMethod, port, log, entry, db):
+        self.logMethod = logMethod
         self.logs = []
         self.logIndex = 1
         self.currentLogRow = []
         self.lastLogRow = []
         self.timeDelta = 0
         self.runTime = 0
-        self.logFile = logFile
+        self.logFile = log
         self.serialComing = False
-        if not readFromSerial:
-            print("Loading logs")
+        self.logRegex = r'^\d{1,4},\d{1,40},DATA,R,-?\d.\d{2},-?\d.\d{2},-?\d.\d{2},-?\d.\d{2}$'
+        self.db = db
+        
+        if logMethod == LogMethod.File:
             self.buildLogs()
-        else :
-            print("Loading serial")
-            self.serial = serial.Serial(port, 19200, timeout=0.05 )
+        elif logMethod == LogMethod.Db:
+            dbLogs = db.getLogsFromEntry(entry[0])
+            print(dbLogs)
+            self.logs = [(log[1], log[3], log[4], log[5], log[6], log[7]) for log in dbLogs]
+        elif logMethod == LogMethod.Serial:
+            self.entryId = self.db.createNewEntry((datetime.now().strftime("%d-%m-%Y_%H-%M-%S"), entry[2]))
+            self.serial = serial.Serial(port, 230400, timeout=0.05 ) 
             self.logs.append(self.parseSerialLine())            
+            self.logs.append(self.parseSerialLine())       
             self.logs.append(self.parseSerialLine())
 
     def buildLogs(self):
@@ -29,8 +40,11 @@ class Logger():
           readCSV = csv.reader(csvfile, delimiter=',')
           for row in readCSV:
             self.logs.append(row)
-
-    def incrementIterator(self):        
+    
+        
+    def incrementIterator(self):
+        if self.logMethod == LogMethod.Serial:
+            self.logIndex = 2
         if self.logIndex < len(self.logs) - 1:
             self.logIndex = self.logIndex + 1
         return self.logIndex
@@ -38,8 +52,11 @@ class Logger():
     def readNewRow(self, state):
         if(state != State.Playing):
             return
-        if self.readFromSerial and self.serialComing:
-            self.logs.append(self.parseSerialLine())  
+        if self.logMethod == LogMethod.Serial and self.serialComing:
+            # self.logs.append(self.parseSerialLine())  
+            self.logs[0] = self.logs[1]
+            self.logs[1] = self.logs[2]
+            self.logs[2] = self.parseSerialLine()
         self.currentLogRow = self.logs[self.logIndex]
         self.lastLogRow = self.logs[self.logIndex - 1]
         self.timeDelta = (float(self.currentLogRow[0]) - float(self.lastLogRow[0]))/1000
@@ -61,17 +78,32 @@ class Logger():
         #currentLogStringQuat = self.currentLogRow[2:] #TODO remove this
         currentLogStringQuat = self.currentLogRow[4:]
         currquat = QuaternionHelper.CreateQuaternion(currentLogStringQuat)
+        # currquat = currquat.multiply((0, 1/(2**.5), 0, 1/(2**.5)))
         angle = currquat.getAngle()
         return currquat
 
     def parseSerialLine(self):
         while True:
-            try:                
+            try:
                 splitString = self.serial.readline().decode('utf-8')
                 splitString = splitString.replace('\t',',').rstrip()
-                if len(splitString) > 0 and 'DATA' in splitString:
+                if re.search(self.logRegex, splitString):       
                     splitString = splitString.split(",")
                     self.serialComing = True
+                    
+                    # formattedString = splitString[1:]
+                    formattedString = splitString[3:]
+                    formattedString.insert(0, splitString[1])
+                    if self.logMethod == LogMethod.Serial:                        
+                        formattedString.append(self.entryId)
+                        log = Log(formattedString)
+                        self.db.createNewLog(log.entry)
+                    print(formattedString)
+                    return formattedString
+                else:
+                    self.serialComing = False
+            except:
+                continue
 
                     if splitString[2] == "DATA" and splitString[3] == "R":
                         formattedString = splitString[3:]
@@ -87,3 +119,16 @@ class Logger():
 
     def getLogLength(self):
         return len(self.logs)
+
+
+class Log():
+    def __init__(self, data):
+        self.milis = data[0]
+        self.side = data[1]        
+        self.vecW = data[2]
+        self.vecX = data[3]
+        self.vecY = data[4]        
+        self.vecZ = data[5]
+        self.entryId = data[6]
+        self.entry = (self.milis, self.entryId, self.side, 
+                    self.vecW, self.vecX, self.vecY, self.vecZ)

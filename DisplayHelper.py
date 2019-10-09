@@ -27,10 +27,17 @@ def buildTextInput(initialText, scale, func, text, numLines, focus, focusFunc, p
     return entry
 
 def buildOptionMenu(text, scale, func, items, initialItem, highlightColor, pos):
-    menu = DirectOptionMenu(text=text, scale=0.1,items=items,initialitem=2,
-    highlightColor=highlightColor,command=func)
+    menu = DirectOptionMenu(
+        text=text, 
+        scale=0.1,
+        items=items,
+        initialitem=initialItem,
+        highlightColor=highlightColor,
+        command=func)
     menu.setScale(scale)
     menu.setPos(pos[0], pos[1], pos[2])
+    menu.popupMenu.setPos(pos[0], pos[1], pos[2] + 1.5)
+    # menu.popupMarker.setPos(pos[0], pos[1], pos[2])
     return menu
 
 def setupCamera(app):
