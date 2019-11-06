@@ -19,7 +19,7 @@ class Logger():
         self.runTime = 0
         self.logFile = log
         self.serialComing = False
-        self.logRegex = r'^\d{1,4},\d{1,40},DATA,R,-?\d.\d{2},-?\d.\d{2},-?\d.\d{2},-?\d.\d{2}$'
+        self.logRegex = r'\d{1,40},DATA,-?\d.\d{2},-?\d.\d{2},-?\d.\d{2},-?\d.\d{2},-?\d.\d{2},-?\d.\d{2},-?\d.\d{2}$'
         self.db = db
         
         if logMethod == LogMethod.File:
@@ -36,11 +36,15 @@ class Logger():
             self.logs.append(self.parseSerialLine())
 
     def buildLogs(self):
-        with open(self.logFile) as csvfile:
-          readCSV = csv.reader(csvfile, delimiter=',')
-          for row in readCSV:
-            self.logs.append(row)
-    
+        with open(self.logFile) as csvfile:         
+          fileLines = csvfile.readlines()
+          for row in fileLines:
+            splitString = row.replace('\t',',').rstrip()
+            splitString = splitString.split(",")
+            formattedString = splitString[3:]
+            formattedString.insert(0, splitString[1])            
+            self.logs.append(formattedString)
+
         
     def incrementIterator(self):
         if self.logMethod == LogMethod.Serial:
@@ -70,11 +74,11 @@ class Logger():
             self.logIndex = index
 
     def getLastQuaternion(self):        
-        lastLogStringQuat = self.lastLogRow[2:]
+        lastLogStringQuat = self.lastLogRow[1:]
         return QuaternionHelper.CreateQuaternion(lastLogStringQuat)
 
     def getCurrentQuaternion(self):
-        currentLogStringQuat = self.currentLogRow[2:]
+        currentLogStringQuat = self.currentLogRow[1:]
         currquat = QuaternionHelper.CreateQuaternion(currentLogStringQuat)
         # currquat = currquat.multiply((0, 1/(2**.5), 0, 1/(2**.5)))
         angle = currquat.getAngle()
@@ -93,8 +97,7 @@ class Logger():
                     formattedString = splitString[3:]
                     formattedString.insert(0, splitString[1])
                     if self.logMethod == LogMethod.Serial:                        
-                        formattedString.append(self.entryId)
-                        log = Log(formattedString)
+                        log = Log(formattedString, self.entryId)
                         self.db.createNewLog(log.entry)
                     print(formattedString)
                     return formattedString
@@ -109,13 +112,13 @@ class Logger():
 
 
 class Log():
-    def __init__(self, data):
+    def __init__(self, data, entryId):
         self.milis = data[0]
-        self.side = data[1]        
-        self.vecW = data[2]
-        self.vecX = data[3]
-        self.vecY = data[4]        
-        self.vecZ = data[5]
-        self.entryId = data[6]
-        self.entry = (self.milis, self.entryId, self.side, 
+        # TODO: Change this back if we need it
+        self.side = "N"    
+        self.vecW = data[1]
+        self.vecX = data[2]
+        self.vecY = data[3]        
+        self.vecZ = data[4]
+        self.entry = (self.milis, entryId, self.side, 
                     self.vecW, self.vecX, self.vecY, self.vecZ)
