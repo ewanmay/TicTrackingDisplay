@@ -106,17 +106,6 @@ class Logger():
             except:
                 continue
 
-                    if splitString[2] == "DATA" and splitString[3] == "R":
-                        formattedString = splitString[3:]
-                        formattedString.insert(0, splitString[1]) 
-                        print(formattedString)
-                        return formattedString
-                else:
-                    self.serialComing = False
-            except:
-                continue
-            
-
 
     def getLogLength(self):
         return len(self.logs)
