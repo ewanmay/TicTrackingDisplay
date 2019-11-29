@@ -18,7 +18,7 @@ If you follow the list provided you  **should** be able to run the program. Any 
  ![Environmental Vars](/Images/env_variables.png)  
  Open up the PATH variable, and make sure it has something similar to the top two lines of mine.
  You need the path going to the /scripts directory because that is where we reference **pip** from. 
- ![Python Path](/Images/python_path.PNG)  
+ ![Python Path](/Images/python_path.png)  
  
 3. Now that python is working go ahead and open up a terminal like git bash or command prompt.
 4. Navigate to the cloned repository
